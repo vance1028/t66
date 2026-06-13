@@ -27,65 +27,114 @@ function seededRandom(seed: number): () => number {
 
 export function generateMockContainers(shipConfig: ShipConfig): Container[] {
   const containers: Container[] = [];
-  const { bayCount, rowsPerSide, tiersBelowDeck, tiersAboveDeck } = shipConfig;
+  const { bayCount, rowsPerSide, tiersBelowDeck, tiersAboveDeck, hasPowerSlots } = shipConfig;
   const totalTiers = tiersBelowDeck + tiersAboveDeck;
   const rand = seededRandom(42);
   const totalRows = rowsPerSide * 2;
 
+  const powerSet = new Set(
+    hasPowerSlots.map((s) => `${s.bay}-${s.row}-${s.tier}`)
+  );
+
+  const tierPortMap = new Map<number, { name: string; order: number }>();
+  for (let tier = 1; tier <= totalTiers; tier++) {
+    const norm = (tier - 1) / (totalTiers - 1);
+    const portIdx = Math.min(
+      PORTS.length - 1,
+      Math.max(0, Math.floor(norm * PORTS.length + (rand() - 0.5) * 0.8))
+    );
+    tierPortMap.set(tier, PORTS[portIdx]);
+  }
+
+  const tierWeightBase = new Map<number, number>();
+  for (let tier = 1; tier <= totalTiers; tier++) {
+    const norm = (tier - 1) / (totalTiers - 1);
+    const base = 22 - norm * 14;
+    tierWeightBase.set(tier, base);
+  }
+
   let idx = 0;
+  const usedSlots = new Set<string>();
+  const reeferSlots = Array.from(powerSet);
+  let reeferIdx = 0;
 
   for (let bay = 0; bay < bayCount; bay++) {
     const is40ftBay = shipConfig.size40ftBays.includes(bay);
-    
+
     for (let rowIdx = 0; rowIdx < totalRows; rowIdx++) {
       const row = (rowIdx - rowsPerSide + 0.5) * 2;
-      const absRow = Math.abs(row);
-      
-      const fillRate = 0.7 + rand() * 0.25;
-      
-      for (let tier = 1; tier <= totalTiers; tier++) {
-        if (rand() > fillRate - tier * 0.03) continue;
+      const rowRounded = Math.round(row);
+      const absRow = Math.abs(rowRounded);
 
-        const is40ft = is40ftBay && rand() > 0.5;
+      let columnEmptyFromTier = totalTiers + 1;
+      for (let tier = totalTiers; tier >= 1; tier--) {
+        if (rand() < 0.12 && tier < columnEmptyFromTier - 1) {
+          columnEmptyFromTier = tier;
+        }
+      }
+
+      const isDangerousRow = absRow >= 6;
+      const dangerousTiers: number[] = [];
+      if (isDangerousRow && rand() < 0.3) {
+        for (let tier = tiersBelowDeck + 1; tier <= totalTiers; tier++) {
+          if (rand() < 0.15) dangerousTiers.push(tier);
+        }
+      }
+
+      for (let tier = 1; tier <= totalTiers; tier++) {
+        if (tier >= columnEmptyFromTier) continue;
+
+        const slotKey = `${bay}-${rowRounded}-${tier}`;
+        if (usedSlots.has(slotKey)) continue;
+
+        const is40ft = is40ftBay && rand() > 0.4;
         if (is40ft && bay === bayCount - 1) continue;
 
-        const portIdx = Math.min(
-          PORTS.length - 1,
-          Math.floor(rand() * PORTS.length)
-        );
-        const port = PORTS[portIdx];
+        const hasPower = powerSet.has(slotKey);
+        const isReefer = hasPower && reeferIdx < reeferSlots.length && rand() < 0.5;
+        if (isReefer) reeferIdx++;
 
-        const baseWeight = 8 + rand() * 15;
-        const tierAdjust = 1 - (tier - 1) * 0.08;
-        const weight = Math.round(baseWeight * tierAdjust * 10) / 10;
+        const isDangerous = dangerousTiers.includes(tier);
+        const imoClass = isDangerous
+          ? IMO_CLASSES[Math.floor(rand() * IMO_CLASSES.length)]
+          : null;
 
-        const isReefer = rand() < 0.08 && tier <= 6;
-        const imoClass = rand() < 0.05 ? IMO_CLASSES[Math.floor(rand() * IMO_CLASSES.length)] : null;
+        const port = tierPortMap.get(tier)!;
+        const baseW = tierWeightBase.get(tier)!;
+        const weightVar = (rand() - 0.5) * 2;
+        const weight = Math.max(6, Math.min(28, baseW + weightVar));
 
         if (is40ft) {
+          const nextSlotKey = `${bay + 1}-${rowRounded}-${tier}`;
+          if (usedSlots.has(nextSlotKey)) continue;
+          usedSlots.add(slotKey);
+          usedSlots.add(nextSlotKey);
+
           containers.push({
             containerNo: generateContainerNo(idx++),
             size: '40ft',
-            weight: weight * 1.8,
+            weight: Math.round(weight * 1.8 * 10) / 10,
             dischargePort: port.name,
             portOrder: port.order,
             isReefer,
             imoClass,
             bay,
-            row: Math.round(row),
+            row: rowRounded,
             tier,
           });
         } else {
+          usedSlots.add(slotKey);
+
           containers.push({
             containerNo: generateContainerNo(idx++),
             size: '20ft',
-            weight,
+            weight: Math.round(weight * 10) / 10,
             dischargePort: port.name,
             portOrder: port.order,
             isReefer,
             imoClass,
             bay,
-            row: Math.round(row),
+            row: rowRounded,
             tier,
           });
         }

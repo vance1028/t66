@@ -97,7 +97,7 @@ export function slotToPosition(
   const length = size === '40ft' ? containerLength20ft * 2 : containerLength20ft;
   
   const x = (bay - (bayCount - 1) / 2) * containerLength20ft * 2 + (size === '40ft' ? containerLength20ft * 0.5 : 0);
-  const y = (row / 2) * containerWidth * 2;
+  const y = (row / 2) * containerWidth;
   const z = keelHeight + (tier - 1) * containerHeight;
 
   return { x, y, z };
@@ -110,6 +110,6 @@ export function getContainerDimensions(
   return {
     width: size === '40ft' ? shipConfig.containerLength20ft * 2 : shipConfig.containerLength20ft,
     height: shipConfig.containerHeight,
-    depth: shipConfig.containerWidth * 2 - 0.1,
+    depth: shipConfig.containerWidth - 0.1,
   };
 }

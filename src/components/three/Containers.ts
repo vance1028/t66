@@ -45,13 +45,16 @@ export class ContainerMesh extends THREE.Group {
 
     const portColor = PORT_COLORS[container.dischargePort] || '#888888';
 
-    const geometry = new THREE.BoxGeometry(dims.width, dims.height, dims.depth);
+    const geometry = new THREE.BoxGeometry(dims.width - 0.05, dims.height - 0.05, dims.depth - 0.05);
     const material = new THREE.MeshStandardMaterial({
       color: new THREE.Color(portColor),
       metalness: 0.3,
       roughness: 0.7,
       transparent: true,
       opacity: 0.95,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     });
     this.boxMesh = new THREE.Mesh(geometry, material);
     this.boxMesh.castShadow = true;
@@ -63,6 +66,9 @@ export class ContainerMesh extends THREE.Group {
       color: 0x000000,
       transparent: true,
       opacity: 0.3,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
     });
     const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
     this.add(edges);

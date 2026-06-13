@@ -63,7 +63,7 @@ export class ShipRack extends THREE.Group {
           const geometry = new THREE.BoxGeometry(
             bayLength - 0.1,
             containerHeight - 0.05,
-            containerWidth * 2 - 0.1
+            containerWidth - 0.1
           );
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(edges, material);
@@ -83,7 +83,9 @@ export class ShipRack extends THREE.Group {
 
     const deckY = keelHeight + tiersBelowDeck * containerHeight;
     const shipLength = bayCount * containerLength20ft * 2;
-    const shipWidth = totalRows * containerWidth;
+    const maxRowY = ((rowsPerSide * 2 - 1) / 2) * containerWidth;
+    const shipWidth = maxRowY * 2 + containerWidth + 1;
+    const hullWidth = shipWidth;
 
     const deckMaterial = new THREE.MeshStandardMaterial({
       color: 0x1a365d,
@@ -105,7 +107,7 @@ export class ShipRack extends THREE.Group {
       side: THREE.DoubleSide,
     });
     const hullHeight = keelHeight + tiersBelowDeck * containerHeight;
-    const hullGeometry = new THREE.BoxGeometry(shipLength * 0.95, hullHeight, shipWidth * 0.9);
+    const hullGeometry = new THREE.BoxGeometry(shipLength * 0.95, hullHeight, hullWidth);
     this.hull = new THREE.Mesh(hullGeometry, hullMaterial);
     this.hull.position.y = hullHeight / 2;
     this.hull.position.x = -containerLength20ft;
@@ -114,7 +116,7 @@ export class ShipRack extends THREE.Group {
     this.add(this.hull);
 
     const waterlineGeometry = new THREE.EdgesGeometry(
-      new THREE.BoxGeometry(shipLength * 0.98, 0.02, shipWidth * 0.95)
+      new THREE.BoxGeometry(shipLength * 0.98, 0.02, hullWidth * 0.98)
     );
     const waterlineMaterial = new THREE.LineBasicMaterial({
       color: 0xff6b35,
